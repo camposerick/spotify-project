@@ -31,12 +31,17 @@ def get_auth_header(token):
 
 
 def get_playlist_data(token, playlist_id):
-    url = f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks?market=BR'
+    url_playlist_data = f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks?market=BR'
+    url_playlist_name = f'https://api.spotify.com/v1/playlists/{playlist_id}'
     headers = get_auth_header(token)
 
-    result = get(url, headers=headers)
-    json_result = json.loads(result.content)
-    return json_result
+    result_playlist_data = get(url_playlist_data, headers=headers)
+    json_result = json.loads(result_playlist_data.content)
+    
+    result_playlist_name = get(url_playlist_name, headers=headers)
+    playlist_name = json.loads(result_playlist_name.content)['name']
+    
+    return json_result, playlist_name
 
 
 # Chamada da API para buscar infomações das características de áudios
@@ -62,17 +67,23 @@ def get_audio_features(token, playlist_data):
 
 # Chamada da API para buscar infomações dos artistas
 def get_artist_data(token, playlist_data):
-    artist_data = []
     headers = get_auth_header(token)
+    ids_str_list = []
+    count = 50
     
-    for item in playlist_data["items"]:
-        artist_id = item["track"]["artists"][0]["id"]
-        url = f"https://api.spotify.com/v1/artists/{artist_id}"
+    for i in range(0, len(playlist_data['items']), count):
+        ids_str = ','.join(str(id["track"]["artists"][0]["id"]) for id in playlist_data['items'][i:i+count])
+        ids_str_list.append(ids_str)
+    
+    artist_data = []
+    
+    for ids_str in ids_str_list:
+        url = f'https://api.spotify.com/v1/artists?ids={ids_str}'
         result = get(url, headers=headers)
-        json_result = json.loads(result.content)
-
-        artist_data.append(json_result)
-    
+        json_result = json.loads(result.content)['artists']
+        
+        artist_data.extend(json_result)
+        
     return artist_data
 
 
@@ -163,39 +174,71 @@ def main():
     token = get_token(client_id, client_secret)
 
     # Input do ID da playlist
-    playlist_id = "3os3auQwfNuEbzZZlHnj8j"
-    playlist_name = "wrapped 2023"
-
-    # Extraindo informações da playlist
-    playlist_data = get_playlist_data(token, playlist_id)
+    playlist_ids = ['https://open.spotify.com/playlist/37i9dQZEVXbM8SIrkERIYl',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbJPcfkRz0wJ0',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbMMy2roB9myp',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbOa2lmxNORXQ',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbKj23U1GF4IR',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbO3qyFxbkOE1',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbLRQDuF5jeBp',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbNFJfN1Vw8d9',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbIQnj7RRhdSX',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbIPWwFssbupI',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbLnolsZ8PSNw',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbJiZcmkrIHGU',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbMH2jvi6jvjk',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbLn7RQmT5Xv2',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbKY7jLzlJ11V',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbNBz9cRCSFkY',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbKXQ4mDTEBXq',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbJkgIdfsJyTw',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbObFQZ3JLcXt',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbLZ52XmnySJg',
+                    'https://open.spotify.com/playlist/37i9dQZEVXbMXbN3EUUhlg']
     
-    # Extraindo informações das músicas
-    audio_features = get_audio_features(token, playlist_data)
+    for playlist_id in playlist_ids:
 
-    # Extraindo informações dos artistas
-    artist_data = get_artist_data(token, playlist_data)
+        playlist_id = playlist_id.split('/')[-1]
+        
+        # Extraindo informações da playlist
+        playlist_data, playlist_name = get_playlist_data(token, playlist_id)
+        
+        # Extraindo informações das músicas
+        audio_features = get_audio_features(token, playlist_data)
 
-    # Transformando informações desejadas da playlist
-    cleaned_playlist_data = clean_playlist_data(playlist_data, playlist_name)
+        # Extraindo informações dos artistas
+        artist_data = get_artist_data(token, playlist_data)
 
-    # Transformando informações desejadas das músicas
-    cleaned_audio_features = clean_audio_features(audio_features)
+        # Transformando informações desejadas da playlist
+        cleaned_playlist_data = clean_playlist_data(playlist_data, playlist_name)
 
-    # Transformando informações desejadas dos artistas
-    cleaned_artist_data = clean_artist_data(artist_data)
+        # Transformando informações desejadas das músicas
+        cleaned_audio_features = clean_audio_features(audio_features)
 
-    # Agrupando dados em único dataset
-    final_data = merge_data(cleaned_playlist_data, cleaned_audio_features, cleaned_artist_data)
+        # Transformando informações desejadas dos artistas
+        cleaned_artist_data = clean_artist_data(artist_data)
 
-    # Salvando dataset em arquivo csv
-    final_data.to_csv(playlist_name + '.csv', encoding='utf-8', index=False)
+        # Agrupando dados em único dataset
+        final_data = merge_data(cleaned_playlist_data, cleaned_audio_features, cleaned_artist_data)
 
-    if playlist_data:
-        print("Dados baixados com sucesso")
-        print("Quantidades de músicas baixadas: ", len(playlist_data["items"]))
-    else:
-        print("Dados não baixados")
+        # Salvando dataset em arquivo csv
+        final_data.to_csv('./datasets/' + playlist_name + '.csv', encoding='utf-8', index=False)
+
+        if playlist_data:
+            print('Playlist:', playlist_name)
+            print("Dados baixados com sucesso")
+            print('---')
+        else:
+            print("Dados não baixados")
 
 
 if __name__ == "__main__":
     main()
+    
+    
+''' 
+
+alterar para colar o link e não apenas o id
+
+
+'''
