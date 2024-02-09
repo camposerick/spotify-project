@@ -106,7 +106,7 @@ def clean_playlist_data(playlist_data, playlist_name):
 
         dict_copy = dict.copy()
         list.append(dict_copy)
-
+    
     return list
 
 
@@ -196,8 +196,13 @@ def main():
                     'https://open.spotify.com/playlist/37i9dQZEVXbLZ52XmnySJg',
                     'https://open.spotify.com/playlist/37i9dQZEVXbMXbN3EUUhlg']
     
+    cleaned_playlist_data = []
+    cleaned_audio_features = []
+    cleaned_artist_data = []
+    
     for playlist_id in playlist_ids:
-
+        
+        # Extraindo a id da playlist da URL
         playlist_id = playlist_id.split('/')[-1]
         
         # Extraindo informações da playlist
@@ -210,35 +215,27 @@ def main():
         artist_data = get_artist_data(token, playlist_data)
 
         # Transformando informações desejadas da playlist
-        cleaned_playlist_data = clean_playlist_data(playlist_data, playlist_name)
-
+        cleaned_current_playlist_data = clean_playlist_data(playlist_data, playlist_name)
+        cleaned_playlist_data.extend(cleaned_current_playlist_data)
+        
         # Transformando informações desejadas das músicas
-        cleaned_audio_features = clean_audio_features(audio_features)
+        cleaned_current_audio_features = clean_audio_features(audio_features)
+        cleaned_audio_features.extend(cleaned_current_audio_features)
 
         # Transformando informações desejadas dos artistas
-        cleaned_artist_data = clean_artist_data(artist_data)
+        cleaned_current_artist_data = clean_artist_data(artist_data)
+        cleaned_artist_data.extend(cleaned_current_artist_data)
 
-        # Agrupando dados em único dataset
-        final_data = merge_data(cleaned_playlist_data, cleaned_audio_features, cleaned_artist_data)
-
-        # Salvando dataset em arquivo csv
-        final_data.to_csv('./datasets/' + playlist_name + '.csv', encoding='utf-8', index=False)
-
-        if playlist_data:
-            print('Playlist:', playlist_name)
-            print("Dados baixados com sucesso")
-            print('---')
-        else:
-            print("Dados não baixados")
+    # Salvando dataset em arquivo csv
+    df_playlist_data = pd.DataFrame(cleaned_playlist_data)
+    df_audio_features = pd.DataFrame(cleaned_audio_features)
+    df_artist_data = pd.DataFrame(cleaned_artist_data)
+        
+    df_playlist_data.to_csv('./datasets/playlist_data.csv', encoding='utf-8', index=False)
+    df_audio_features.to_csv('./datasets/audio_features.csv', encoding='utf-8', index=False)
+    df_artist_data.to_csv('./datasets/artist_data.csv', encoding='utf-8', index=False)
 
 
 if __name__ == "__main__":
     main()
     
-    
-''' 
-
-alterar para colar o link e não apenas o id
-
-
-'''
